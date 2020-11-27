@@ -47,17 +47,29 @@ def makeRequest(dateObj):
         df = pd.read_csv(path + strDate + '.csv', dtype={"FIPS":str} )
         df['Date'] = strDate # add a date column
 
+        
+
+        # clean the fips code
+        df['FIPS'] = df['FIPS'].map(cleanFips )
+
+
     except Exception as e:
         print( e )
 
 
     return df
 
-def cleanFips():
+def cleanFips(string):
     '''
     Function to clean the fips code and ensure that it is 5 characters
+    Takes a string as input
     '''
-    pass
+    string = str(string)
+
+    if (len(string) < 5):
+        string = '0' + string
+
+    return string
 
 
 def pullData():
@@ -83,6 +95,8 @@ def pullData():
         masterDf = pd.concat( [ masterDf, current ], sort=True  )
 
     fipsCodes = masterDf['FIPS'].unique()
+
+    print('2230' in fipsCodes )
 
     masterDf.to_csv("data.csv")
     
