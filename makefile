@@ -1,2 +1,2 @@
 pull-data:
-	python PullData.py > datalog.tmp
+	python PullData.py >> datalog.tmp

@@ -20,9 +20,11 @@ def timer( func ):
     prints the time of a function for logging purposes
     '''
     def inner():
+        today = datetime.date.today()
         start = time.time()
         func()
-        print('Time taken:', time.time()-start )
+        print("Function ran:{} taking {}".format( today,round( (time.time()-start) / 60 ),2))
+        print()
 
     return inner
 
