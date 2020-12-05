@@ -11,6 +11,21 @@
 import pandas as pd 
 import datetime
 from datetime import date
+import time
+##################################
+
+def timer( func ):
+    '''
+    decorator
+    prints the time of a function for logging purposes
+    '''
+    def inner():
+        start = time.time()
+        func()
+        print('Time taken:', time.time()-start )
+
+    return inner
+
 
 def convertDate( dateObj ):
     '''
@@ -71,7 +86,7 @@ def cleanFips(string):
 
     return string
 
-
+@timer
 def pullData():
     '''
     Pulls data from John Hopkins University's GitHub. 
@@ -96,7 +111,8 @@ def pullData():
 
     fipsCodes = masterDf['FIPS'].unique()
 
-    print('2230' in fipsCodes )
+    print("Last Date seen:", currentDate )
+
 
     masterDf.to_csv("data.csv")
     
