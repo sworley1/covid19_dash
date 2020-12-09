@@ -183,7 +183,7 @@ def update_figure(scope, z):
 
         for value in z:
             print(value)
-            traces.append( {'x':data.index, 'y':data[value], 'name':region})
+            traces.append( {'x':data.index, 'y':data[value], 'name':str(region)+' '+str(value)})
 
     return {'data':traces, 'layout':go.Layout(title='COVID')}
 
