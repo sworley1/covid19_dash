@@ -3,3 +3,5 @@ data.csv
 *.ipynb
 *.tmp
 Ignore/
+__pycache__
+counties.json

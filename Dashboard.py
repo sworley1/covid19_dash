@@ -55,8 +55,9 @@ def transform_timeseries( df, region=None):
         by_date['New_'+col] = by_date[col] - by_date['Previous_'+col]
 
     for col in ['Active', 'Confirmed', 'Deaths','New_Deaths','New_Active', 'New_Confirmed']:
-        by_date['Rolling_'+col] = by_date[col].rolling(window=5).mean()
+        by_date['7_Day_Avg_'+col] = by_date[col].rolling(window=7).mean()
 
+    by_date = by_date[7:]
     return by_date
 
 # --------
@@ -66,7 +67,6 @@ def get_input_fields(df):
     '''
     Generates input field options
     '''
-
 
     # get labels
     cols = list( df.columns )
@@ -82,6 +82,7 @@ def get_input_fields(df):
         return False
 
     value_options = [ {'label':x, 'value':x} for x in cols if x ]
+
 
 
 
@@ -107,56 +108,120 @@ def filters(df, *args):
 # ---------------
 
 # -----
-# get counties
+# get county json data
 # ----
-# from urllib.request import urlopen
-# import json
-# with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json') as response:
-#     counties = json.load(response)
-
+#from urllib.request import urlopen
+import json
+#with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json') as response:
+#    counties = json.load(response)
+with open("counties.json") as json_file:
+    counties = json.load(json_file)
 
 
 # Set up dashboard
-app = dash.Dash()
 df = read_and_clean()
 
+
+# Get list of regions for dropdown menu
 scope = list( df['Province_State'].unique() )
 scope.insert(0, 'All U.S.')
 scope_options = [ {'label':x, 'value':x } for x in scope]
 
-df = transform_timeseries(df)
 
+# Get the list of value options (Confirmed, Active, Deaths) for drop down menu
+df = transform_timeseries(df)
 value_options = get_input_fields(df)
 
-
+# -----
+# app
+# -----
+app = dash.Dash()
 app.layout = html.Div([
                         html.Div([
                                     html.H1('COVID-19 Dashboard'),
                                     html.H3('Data From John Hopkins University.')
                                 ], style = {'text-align':'center', 'width':'100%','height':'125px', 'background-color':'#63A088'}),
 
+                        dcc.Tabs(id='tabs-selector', value='tab-1', children=[
+                            dcc.Tab(label='Time Series', value='tab-1'),
+                            dcc.Tab(label='Heat Map', value='tab-2'),
+                        ]),
+                        html.Div(id='tabs-content')
+                    ])
+
+
+
+
+
+@app.callback(Output('tabs-content','children'),
+              [Input('tabs-selector', 'value')])
+def render_content(tab):
+    if tab == 'tab-1':
+        return html.Div([
+
+        html.Div([
+            html.Label(['Region'], style={'margin':'50px'}),
+            dcc.Dropdown(id='scope-input',
+                        options=scope_options,
+                        value='All U.S.',
+                        multi=True,
+                        placeholder="Select a region")
+
+            ], style={'width':'50%', 'display':'inline-block'}),
+
+        html.Div([
+            html.Label(['Value Type:'], style={'margin':'50px'}),
+            dcc.Dropdown(id='z-input',
+                        options=value_options,
+                        multi=True,
+                        value='Confirmed')
+            ], style = {'width':'50%', 'display':'inline-block'}),
+
+        html.Div([
+                    dcc.Graph(id='timeseries')
+
+            ], style={"background-color":"#63A088", 'text-align':'center'})])
+
+    else:
+        return html.Div([
                         html.Div([
                             html.Label(['Region'], style={'margin':'50px'}),
-                            dcc.Dropdown(id='scope-input',
+                            dcc.Dropdown(id='state-selector',
                                         options=scope_options,
-                                        value='All U.S.',
-                                        multi=True,
+                                        value='Texas',
+                                        multi=False,
                                         placeholder="Select a region")
 
                             ], style={'width':'50%', 'display':'inline-block'}),
-
                         html.Div([
                             html.Label(['Value Type:'], style={'margin':'50px'}),
-                            dcc.Dropdown(id='z-input',
+                            dcc.Dropdown(id='z_selector',
                                         options=value_options,
-                                        multi=True,
+                                        multi=False,
                                         value='Confirmed')
                             ], style = {'width':'50%', 'display':'inline-block'}),
-
                         html.Div([
-                                    dcc.Graph(id='timeseries')
+                                    dcc.Graph(id='choropleth')
 
-                            ], style={"background-color":"#FFFCF7", 'text-align':'center'})])
+                            ], style={"background-color":"#63A088", 'text-align':'center'})])
+
+
+
+@app.callback( Output("choropleth", "figure"),
+              [Input("state-selector", "value"),
+               Input("z_selector", "value")])
+def display_choropleth(state, z_value):
+    data = read_and_clean()
+    data = data[data["Province_State"]==state]
+    fig = px.choropleth(
+                        data,
+                        geojson=counties,
+                        locations="FIPS",
+                        color=z_value
+
+    )
+    fig.update_geos(fitbounds="locations", visible=False)
+    return fig
 
 @app.callback( Output('timeseries', 'figure'),
                [Input('scope-input', 'value'),
@@ -169,9 +234,7 @@ def update_figure(scope, z):
         z = [z]
     df = read_and_clean()
 
-
     traces = []
-
     for region in scope:
         print(region)
         data = read_and_clean()
@@ -179,7 +242,6 @@ def update_figure(scope, z):
             data = transform_timeseries(data)
         else:
             data = transform_timeseries(data, region)
-
 
         for value in z:
             print(value)
