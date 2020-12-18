@@ -1,4 +1,6 @@
 # covid19_dash
-Learning to make dashboards. Focus on Texas and Austin. Data from John Hopkins
+Another COVID-19 Dashboard
+
+playing around with Plotly, Dash and learning to make dashboards. 
 
 ### Data from [John Hopkins](https://github.com/CSSEGISandData/COVID-19) Center for Systems Science and Engineering
