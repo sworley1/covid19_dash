@@ -31,6 +31,26 @@ def read_and_clean():
     rec_us = df['Combined_Key'] != 'Recovered, US'
     df = df[rec_us]
 
+    #
+    vi_filter = df["Province_State"] != "Virgin Islands"
+    df = df[vi_filter]
+
+    pr_filter = df["Province_State"] != "Puerto Rico"
+    df = df[pr_filter]
+
+    nmi_filter = df["Province_State"] != "Northern Mariana Islands"
+    df = df[nmi_filter]
+
+    guam_filter = df["Province_State"] != "Guam"
+    df = df[guam_filter]
+
+    gp_filter = df["Province_State"] != "Grand Princess"
+    df = df[gp_filter]
+
+    dp_filter = df["Province_State"] != "Diamond Princess"
+    df = df[dp_filter]
+
+
     return df
 
 # -------
@@ -44,7 +64,6 @@ def transform_timeseries( df, region=None):
     # perform filerting first
     if region:
         df = df[df['Province_State']==region]
-
 
     by_date = df.groupby('Date')[['Deaths','Confirmed','Active','Recovered']].sum()
 
@@ -104,12 +123,8 @@ def filters(df, *args):
 
 
 # ----------------
-# main
-# ---------------
-
-# -----
 # get county json data
-# ----
+# ----------------
 #from urllib.request import urlopen
 import json
 #with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json') as response:
@@ -132,15 +147,15 @@ scope_options = [ {'label':x, 'value':x } for x in scope]
 df = transform_timeseries(df)
 value_options = get_input_fields(df)
 
-# -----
+# ----------------
 # app
-# -----
+# ----------------
 app = dash.Dash()
 app.layout = html.Div([
                         html.Div([
                                     html.H1('COVID-19 Dashboard'),
                                     html.H3('Data From John Hopkins University.')
-                                ], style = {'text-align':'center', 'width':'100%','height':'125px', 'background-color':'#63A088'}),
+                                ], style = {'text-align':'center', 'width':'100%','height':'125px', 'background-color':'#63A088', 'padding':'10px'}),
 
                         dcc.Tabs(id='tabs-selector', value='tab-1', children=[
                             dcc.Tab(label='Time Series', value='tab-1'),
@@ -151,8 +166,9 @@ app.layout = html.Div([
 
 
 
-
-
+# ----------------
+# tabs Callback
+# ----------------
 @app.callback(Output('tabs-content','children'),
               [Input('tabs-selector', 'value')])
 def render_content(tab):
@@ -178,11 +194,15 @@ def render_content(tab):
             ], style = {'width':'50%', 'display':'inline-block'}),
 
         html.Div([
+                    html.H4("Displays metrics over time for given state(s) beginning April 27, 2020.")
+        ], style = {"width":"100%", "display":"inline-block", "background-color":"#63A088", "text-align":"center", "margin":"2px"}),
+
+        html.Div([
                     dcc.Graph(id='timeseries')
 
             ], style={"background-color":"#63A088", 'text-align':'center'})])
 
-    else:
+    else: # return the Heatmap Tab
         return html.Div([
                         html.Div([
                             html.Label(['Region'], style={'margin':'50px'}),
@@ -196,10 +216,17 @@ def render_content(tab):
                         html.Div([
                             html.Label(['Value Type:'], style={'margin':'50px'}),
                             dcc.Dropdown(id='z_selector',
-                                        options=value_options,
+                                        options=[ {'label':x, 'value':x } for x in ["Confirmed", "Active", "Deaths", "Recovered"]],
                                         multi=False,
                                         value='Confirmed')
                             ], style = {'width':'50%', 'display':'inline-block'}),
+
+                        html.Div([
+                                    html.H4("Displays Heatmap for given state for most recent day data is available."),
+                                    html.H4("Click a county to display a time series graph of county level data.")
+                        ], style = {"width":"100%", "display":"inline-block", "background-color":"#63A088", "text-align":"center", "margin":"2px"}),
+
+
                         html.Div([
                                     dcc.Graph(id='choropleth')
 
@@ -212,7 +239,9 @@ def render_content(tab):
         ])
 
 
-
+# ----------------
+# Choropleth Callback
+# ----------------
 @app.callback( Output("choropleth", "figure"),
               [Input("state-selector", "value"),
                Input("z_selector", "value")])
@@ -232,26 +261,38 @@ def display_choropleth(state, z_value):
                         data,
                         geojson=counties,
                         locations="FIPS",
-                        color=z_value
+                        color=z_value,
+                        hover_name="Combined_Key"
 
     )
+    fig.update_layout({"title":"{}: Number of {} as of {}".format(state,z_value,date)})
     fig.update_geos(fitbounds="locations", visible=False)
     return fig
 
+# ----------------
+# Click Data Graph callback
+# ----------------
 @app.callback( Output("click-timeseries", "figure"),
                [Input("choropleth", "clickData")])
 def update_click_graph(clickData):
+    '''
+    Updates the graph that displays the timeseries graph that user
+    selects by clicking on the Choropleth graph
+    '''
     data = read_and_clean()
-    print("clickData =>",clickData)
     data = data[data["FIPS"]==clickData["points"][0]["location"]] # filters by county fipsCodes
+    countyName = list(data["Admin2"])[0]
     data_ts = transform_timeseries(data)
 
     traces = []
     for col in data_ts.columns:
-        traces.append( {'x':data_ts.index, 'y':data_ts[col], 'name':str(col)})
-    return {'data':traces, 'layout':go.Layout(title='COVID')}
+        if col not in ["Previous_Confirmed", "Previous_Active", "Previous_Deaths", "Previous_Recovered"]:
+            traces.append( {'x':data_ts.index, 'y':data_ts[col], 'name':str(col)})
+    return {'data':traces, 'layout':go.Layout(title='Data for {} County'.format(countyName))}
 
-
+# ----------------
+# Time Series graph Callback
+# ----------------
 @app.callback( Output('timeseries', 'figure'),
                [Input('scope-input', 'value'),
                 Input('z-input', 'value')
@@ -280,8 +321,8 @@ def update_figure(scope, z):
             print(value)
             traces.append( {'x':data.index, 'y':data[value], 'name':str(region)+' '+str(value)})
 
-    return {'data':traces, 'layout':go.Layout(title='COVID')}
+    return {'data':traces, 'layout':go.Layout(title=" ")}
 
-
+##########################
 if __name__ == '__main__':
     app.run_server()
