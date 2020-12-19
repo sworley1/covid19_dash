@@ -203,7 +203,13 @@ def render_content(tab):
                         html.Div([
                                     dcc.Graph(id='choropleth')
 
-                            ], style={"background-color":"#63A088", 'text-align':'center'})])
+                            ], style={"background-color":"#63A088", 'text-align':'center'}),
+
+                        html.Div(
+                                dcc.Graph(id="click-timeseries")
+                                )
+
+        ])
 
 
 
@@ -211,8 +217,17 @@ def render_content(tab):
               [Input("state-selector", "value"),
                Input("z_selector", "value")])
 def display_choropleth(state, z_value):
+    '''
+    Call back that updates the choropleth heat map for the secondary tab
+    Takes string of state name and string column value as input from drop downs
+    NOTE: This works! If the heatmap is not rendering try running it while connected
+    to the Interent (bug I encountered) or running alone to ensure libraries are
+    up to date.
+    '''
     data = read_and_clean()
     data = data[data["Province_State"]==state]
+    date = list(data["Date"])[-1] # gets the most recent date
+    data = data[data["Date"]==date]
     fig = px.choropleth(
                         data,
                         geojson=counties,
@@ -223,11 +238,29 @@ def display_choropleth(state, z_value):
     fig.update_geos(fitbounds="locations", visible=False)
     return fig
 
+@app.callback( Output("click-timeseries", "figure"),
+               [Input("choropleth", "clickData")])
+def update_click_graph(clickData):
+    data = read_and_clean()
+    print("clickData =>",clickData)
+    data = data[data["FIPS"]==clickData["points"][0]["location"]] # filters by county fipsCodes
+    data_ts = transform_timeseries(data)
+
+    traces = []
+    for col in data_ts.columns:
+        traces.append( {'x':data_ts.index, 'y':data_ts[col], 'name':str(col)})
+    return {'data':traces, 'layout':go.Layout(title='COVID')}
+
+
 @app.callback( Output('timeseries', 'figure'),
                [Input('scope-input', 'value'),
                 Input('z-input', 'value')
                 ])
 def update_figure(scope, z):
+    '''
+    Callback that updates the the TimeSeries graph on the first tab.
+    Takes 1 or more states and 1 or more columns as input
+    '''
     if isinstance(scope, str):
         scope = [scope]
     if isinstance(z, str):
