@@ -23,7 +23,9 @@ def timer( func ):
         today = datetime.date.today()
         start = time.time()
         func()
-        print("Function ran:{} taking {}".format( today,round( (time.time()-start) / 60 ),2))
+        end = time.time()
+        delta = end - start
+        print("Function ran:{} taking {} minutes and {} seconds".format( today,round( (delta // 60 ),2), round( delta % 60, 2)))
         print()
 
     return inner
