@@ -125,12 +125,12 @@ def filters(df, *args):
 # ----------------
 # get county json data
 # ----------------
-#from urllib.request import urlopen
+from urllib.request import urlopen
 import json
-#with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json') as response:
-#    counties = json.load(response)
-with open("counties.json") as json_file:
-    counties = json.load(json_file)
+with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json') as response:
+    counties = json.load(response)
+#with open("counties.json") as json_file:
+#    counties = json.load(json_file)
 
 
 # Set up dashboard
