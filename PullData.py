@@ -72,11 +72,13 @@ def makeRequest(dateObj):
         df['FIPS'] = df['FIPS'].map(cleanFips )
 
 
+        return df
+
+
     except Exception as e:
         print( e )
 
 
-    return df
 
 def cleanFips(string):
     '''
