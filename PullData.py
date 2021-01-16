@@ -8,10 +8,11 @@
 # -----------------------------
 
 # imports
-import pandas as pd 
+import pandas as pd
 import datetime
 from datetime import date
 import time
+import os
 ##################################
 
 def timer( func ):
@@ -50,6 +51,15 @@ def convertDate( dateObj ):
 
     return month + '-' + day + '-' + year
 
+def convertDate1( strDate ):
+    '''
+    Takes date in MM-DD-YYYY format and converts
+    it to YYYY-MM-DD format
+    '''
+    splitDate = strDate.split("-")
+
+    return splitDate[2] + '-' + splitDate[0] + '-' + splitDate[1]
+
 
 
 def makeRequest(dateObj):
@@ -60,13 +70,15 @@ def makeRequest(dateObj):
 
     path = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/'
 
-    strDate = convertDate( dateObj ) 
+    strDate = convertDate( dateObj )
 
     try:
         df = pd.read_csv(path + strDate + '.csv', dtype={"FIPS":str} )
-        df['Date'] = strDate # add a date column
 
-        
+        formatedDate = convertDate1( strDate )
+        df['Date'] = formatedDate # add a date column
+
+
 
         # clean the fips code
         df['FIPS'] = df['FIPS'].map(cleanFips )
@@ -95,13 +107,13 @@ def cleanFips(string):
 @timer
 def pullData():
     '''
-    Pulls data from John Hopkins University's GitHub. 
+    Pulls data from John Hopkins University's GitHub.
     Designed to run daily
     '''
-    startDate = date(2020,4,20) # day records start 
+    startDate = date(2020,4,20) # day records start
     endDate = date.today() # day to stop collecting records
 
-    masterDf = makeRequest( startDate ) 
+    masterDf = makeRequest( startDate )
 
 
     # Start looping through all the days
@@ -120,10 +132,10 @@ def pullData():
     print("Last Date seen:", currentDate )
 
 
-    masterDf.to_csv("data.csv")
-    
+    masterDf.to_csv("/home/worles/Repos/covid19_dash/data.csv")
+
 
 if __name__ == '__main__':
     pullData()
 
-    
+
